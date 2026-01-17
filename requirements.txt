@@ -1,0 +1,4 @@
+flet>=0.21.0
+scapy>=2.5.0
+requests>=2.31.0
+mac-vendor-lookup>=0.1.12
