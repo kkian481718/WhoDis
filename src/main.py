@@ -1,6 +1,7 @@
 import flet as ft
 from scanner import NetworkScanner
 from analyzer import AIAnalyzer
+from database import get_database
 import threading
 
 def main(page: ft.Page):
@@ -18,7 +19,7 @@ def main(page: ft.Page):
 
     # 初始化模組
     scanner = NetworkScanner()
-    analyzer = AIAnalyzer(model="qwen2.5:3b")
+    analyzer = AIAnalyzer(model="qwen3:8b")
 
     # UI 狀態
     scan_results = []
@@ -40,6 +41,14 @@ def main(page: ft.Page):
     
     # AI 分析計時器
     ai_timer_text = ft.Text("", color="#888888", size=12, visible=False)
+
+    # 深度掃描開關
+    deep_scan_switch = ft.Switch(value=False, active_color="#1A1A1A")
+    deep_scan_row = ft.Row([
+        deep_scan_switch,
+        ft.Text("深度掃描", size=13, color="#666666"),
+        ft.Icon("help_outline", size=16, color="#AAAAAA", tooltip="偵測裝置開放的服務埠，需要較長時間"),
+    ], spacing=8)
 
     # 設備列表
     devices_column = ft.Column(spacing=8)
@@ -99,6 +108,49 @@ def main(page: ft.Page):
         elif "google" in vendor_lower:
             icon_name = "android"
 
+        # 主機名稱顯示
+        hostname = device.get('hostname')
+        display_name = hostname if hostname else device.get('ip', 'Unknown')
+        subtitle = device.get('vendor', '未知裝置')
+        if hostname:
+            subtitle = f"{device.get('ip', '')} · {subtitle}"
+        
+        # Port 資訊
+        ports = device.get('ports', [])
+        ports_text = ""
+        if ports:
+            port_names = [f"{p['service']}" for p in ports[:4]]  # 最多顯示 4 個
+            if len(ports) > 4:
+                port_names.append(f"+{len(ports) - 4}")
+            ports_text = " · ".join(port_names)
+
+        # 建立卡片內容
+        info_column = ft.Column([
+            ft.Text(
+                display_name,
+                size=14,
+                weight=ft.FontWeight.W_500,
+                color="#1A1A1A"
+            ),
+            ft.Text(
+                subtitle,
+                size=12,
+                color="#888888",
+            ),
+        ], spacing=2, expand=True)
+        
+        # 如果有 Port 資訊，加入顯示
+        if ports_text:
+            info_column.controls.append(
+                ft.Container(
+                    content=ft.Text(ports_text, size=11, color="#666666"),
+                    bgcolor="#F0F0F0",
+                    padding=ft.Padding(8, 4, 8, 4),
+                    border_radius=4,
+                    margin=ft.Margin(0, 4, 0, 0),
+                )
+            )
+
         return ft.Container(
             content=ft.Row([
                 ft.Container(
@@ -110,19 +162,7 @@ def main(page: ft.Page):
                     alignment=ft.Alignment(0, 0),
                 ),
                 ft.Container(width=12),
-                ft.Column([
-                    ft.Text(
-                        device.get('ip', 'Unknown'),
-                        size=14,
-                        weight=ft.FontWeight.W_500,
-                        color="#1A1A1A"
-                    ),
-                    ft.Text(
-                        device.get('vendor', '未知裝置'),
-                        size=12,
-                        color="#888888",
-                    ),
-                ], spacing=2, expand=True),
+                info_column,
                 ft.Text(
                     device.get('mac', ''),
                     size=11,
@@ -184,10 +224,23 @@ def main(page: ft.Page):
         def task():
             nonlocal scan_results
             try:
-                # 1. 掃描
-                scan_results = scanner.scan()
+                # 取得深度掃描設定
+                is_deep_scan = deep_scan_switch.value
+                
+                if is_deep_scan:
+                    status_text.value = "深度掃描中...（可能需要較長時間）"
+                    page.update()
+                
+                # 1. 掃描（含深度掃描選項）
+                scan_results = scanner.scan(deep_scan=is_deep_scan)
                 update_device_list(scan_results)
                 progress_bar.visible = False
+                
+                # 儲存到資料庫
+                if scan_results and not any("error" in d for d in scan_results):
+                    db = get_database()
+                    subnet = scanner.get_subnet(scanner.get_local_ip())
+                    db.save_scan(scan_results, subnet, deep_scan=is_deep_scan)
                 
                 # 先顯示掃描結果，讓使用者看到發現了多少裝置
                 device_count = len(scan_results)
@@ -251,7 +304,7 @@ def main(page: ft.Page):
         threading.Thread(target=task, daemon=True).start()
 
     # 簡約按鈕
-    scan_btn = ft.Button(
+    scan_btn = ft.FilledButton(
         "掃描網路",
         icon="search",
         on_click=run_scan_and_analyze,
@@ -270,11 +323,13 @@ def main(page: ft.Page):
     main_content = ft.Column(
         [
             header,
-            # 按鈕、進度條、狀態放同一行
+            # 按鈕、深度掃描開關、進度條、狀態放同一行
             ft.Row(
                 [
                     scan_btn, 
-                    ft.Container(width=16), 
+                    ft.Container(width=20), 
+                    deep_scan_row,
+                    ft.Container(width=20), 
                     progress_bar,
                     ft.Container(width=16),
                     status_text,

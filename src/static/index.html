@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WhoDis - 網路裝置掃描</title>
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+    <div class="container">
+        <!-- 標題 -->
+        <header>
+            <h1>WhoDis</h1>
+            <p class="subtitle">網路裝置掃描與 AI 安全分析</p>
+        </header>
+
+        <!-- 控制區 -->
+        <div class="controls">
+            <button id="scanBtn" class="btn-primary">
+                <span class="icon">🔍</span>
+                掃描網路
+            </button>
+            
+            <label class="switch-label">
+                <input type="checkbox" id="deepScan">
+                <span class="switch"></span>
+                <span class="label-text">深度掃描</span>
+                <span class="help-icon" title="偵測裝置開放的服務埠，需要較長時間">?</span>
+            </label>
+            
+            <div id="status" class="status"></div>
+        </div>
+
+        <!-- 進度條 -->
+        <div id="progressBar" class="progress-bar hidden">
+            <div class="progress-fill"></div>
+        </div>
+
+        <!-- AI 分析區 -->
+        <div id="analysisSection" class="analysis-section hidden">
+            <h3>AI 分析報告</h3>
+            <div id="analysisContent" class="analysis-content"></div>
+        </div>
+
+        <!-- 裝置列表 -->
+        <section class="devices-section">
+            <h2>裝置列表</h2>
+            <div id="deviceList" class="device-list">
+                <p class="empty-state">點擊「掃描網路」開始偵測</p>
+            </div>
+        </section>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>

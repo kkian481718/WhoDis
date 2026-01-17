@@ -5,7 +5,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 class AIAnalyzer:
-    def __init__(self, model="qwen2.5:3b", host="http://localhost:11434"):
+    def __init__(self, model="qwen3:8b", host="http://localhost:11434"):
         self.model = model
         self.host = host
         self.api_url = f"{host}/api/generate"
